@@ -1,0 +1,89 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="miniCanIO" target="8" version="2">
+  <configuration
+    Name="Debug"
+    c_preprocessor_definitions="DEBUG"
+    gcc_debugging_level="Level 3"
+    gcc_omit_frame_pointer="Yes"
+    gcc_optimization_level="None" />
+  <configuration
+    Name="Release"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_debugging_level="Level 2"
+    gcc_omit_frame_pointer="Yes"
+    gcc_optimization_level="Level 2 balanced" />
+  <project Name="miniCanIO">
+    <configuration
+      LIBRARY_IO_TYPE="RTT"
+      Name="Common"
+      Target="STM32F103C6"
+      arm_architecture="v7M"
+      arm_compiler_variant="SEGGER"
+      arm_core_type="Cortex-M3"
+      arm_endian="Little"
+      arm_fp_abi="Soft"
+      arm_fpu_type="None"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="2048"
+      arm_linker_variant="SEGGER"
+      arm_rtl_variant="SEGGER"
+      arm_simulator_memory_simulation_parameter="ROM;0x08000000;0x00008000;RAM;0x20000000;0x00002800"
+      arm_target_debug_interface_type="ADIv5"
+      arm_target_device_name="STM32F103C6"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="ARM_MATH_CM3;STM32F10X_LD;__STM32F103_SUBFAMILY;__STM32F1XX_FAMILY;__NO_FPU_ENABLE;STM32F103x6"
+      c_user_include_directories="$(ProjectDir)/CMSIS_5/CMSIS/Core/Include;$(ProjectDir)/STM32F1xx/Device/Include;$(ProjectDir)/STM32F1xx_HAL_Driver/Inc;$(ProjectDir)/Inc"
+      debug_register_definition_file="$(ProjectDir)/STM32F103xx_Registers.xml"
+      debug_stack_pointer_start="__stack_end__"
+      debug_start_from_entry_point_symbol="Yes"
+      debug_target_connection="J-Link"
+      gcc_debugging_level="Level 3"
+      gcc_entry_point="Reset_Handler"
+      link_linker_script_file="$(ProjectDir)/STM32F1xx_Flash.icf"
+      linker_memory_map_file="$(ProjectDir)/STM32F103C6_MemoryMap.xml"
+      macros="DeviceHeaderFile=$(PackagesDir)/STM32F1xx/Device/Include/stm32f10x.h;DeviceSystemFile=$(PackagesDir)/STM32F1xx/Device/Source/system_stm32f10x.c;DeviceVectorsFile=$(PackagesDir)/STM32F1xx/Source/stm32f10x_ld_Vectors.s;DeviceFamily=STM32F1xx;DeviceSubFamily=STM32F103;Target=STM32F103C6"
+      project_directory=""
+      project_type="Executable"
+      target_reset_script="Reset();"
+      target_trace_initialize_script="EnableTrace(&quot;$(TraceInterfaceType)&quot;)" />
+    <configuration
+      Name="Debug"
+      gcc_debugging_level="Level 2"
+      gcc_optimization_level="Level 2 balanced" />
+    <folder Name="CMSIS Files">
+      <file file_name="STM32F1xx/Device/Include/stm32f10x.h" />
+    </folder>
+    <folder Name="HAL">
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_can.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_dma.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio.c" />
+      <file file_name="src/stm32f1xx_hal_msp.c" />
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_rcc.c" />
+      <file file_name="src/stm32f1xx_it.c" />
+    </folder>
+    <folder Name="Script Files">
+      <file file_name="STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c" />
+      <file file_name="STM32F1xx/Scripts/STM32F1xx_Target.js">
+        <configuration Name="Common" file_type="Reset Script" />
+      </file>
+    </folder>
+    <folder Name="Source Files">
+      <configuration Name="Common" filter="c;cpp;cxx;cc;h;s;asm;inc" />
+      <file file_name="src/config.c" />
+      <file file_name="src/main.c" />
+    </folder>
+    <folder Name="System Files">
+      <file file_name="src/SEGGER_THUMB_Startup.s" />
+      <file file_name="STM32F1xx/Source/stm32f10x_ld_Vectors.s">
+        <configuration Name="Common" file_type="Assembly" />
+      </file>
+      <file file_name="STM32F1xx/Source/STM32F1xx_Startup.s" />
+      <file file_name="src/system_stm32f1xx.c" />
+    </folder>
+  </project>
+</solution>
