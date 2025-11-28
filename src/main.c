@@ -455,37 +455,47 @@ static void MX_CAN_Init(void)
 void setGPIOoutput(int pinNumber){
   //pinnumber is from 0..63 for PinA.0 to PinD.15
   GPIO_TypeDef* gpio = GPIOA;
-  if(pinNumber > 15)
-    gpio = GPIOB;
-  if(pinNumber > 31)
-    gpio = GPIOC;
-  if(pinNumber > 47)
+  if(pinNumber > 47){
     gpio = GPIOD;
+    pinNumber -= 0x30;
+  }else if(pinNumber > 31){
+    gpio = GPIOC;
+    pinNumber -= 0x20;
+  }else if(pinNumber > 15){
+    gpio = GPIOB;
+    pinNumber -= 0x10;
+  }
+
     GPIO_InitTypeDef GPIO_InitStruct;
-    GPIO_InitStruct.Pin = 1 < pinNumber;
+    GPIO_InitStruct.Pin = 1 << pinNumber;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; 
     GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(gpio, &GPIO_InitStruct);
 }
 
-void switchGPIO(int pin, enum CFG_SWITCH_TYPE action){
+void switchGPIO(int pinNumber, enum CFG_SWITCH_TYPE action){
   GPIO_TypeDef* gpio = GPIOA;
-  if(pin > 47)
+  if(pinNumber > 47){
     gpio = GPIOD;
-  else if(pin > 31)
+    pinNumber -= 0x30;
+  }else if(pinNumber > 31){
     gpio = GPIOC;
-  else if(pin > 15)
+    pinNumber -= 0x20;
+  }else if(pinNumber > 15){
     gpio = GPIOB;
+    pinNumber -= 0x10;
+  }
   
   switch(action){
   case CONFIG_SWITCH_TYPE_ON:
-    gpio->BRR = 1<<pin;
+    gpio->BRR = 1<<pinNumber;
     break;
   case CONFIG_SWITCH_TYPE_OFF:
-    gpio->BSRR = 1<<pin;
+    gpio->BSRR = 1<<pinNumber;
     break;
   case CONFIG_SWITCH_TYPE_TOGGLE:
-    gpio->ODR ^= 1<<pin;
+    gpio->ODR ^= 1<<pinNumber;
     break;
   default:
     break;
@@ -556,7 +566,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
+  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PB13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
