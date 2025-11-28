@@ -228,7 +228,7 @@ int main(void)
                     case 0xcf:  //read config
                       TxMessage.Data[1] = config_getUserData(RxMessage.Data[1], &(TxMessage.Data[2]), 6);
                       break;
-                    case 0xce:  //edit config
+                    case 0xce:  //edit config [pos, size, data]
                       if(unlocked<3){
                         break;
                       }
@@ -324,30 +324,32 @@ static void MX_CAN_Init(void)
   Pcanconfig cfg = config_get();
   hcan1.Instance = CAN1;
 
-  //default settings for 250k / 125k
+  //default settings for 500k
+  hcan1.Init.Prescaler = 9;  
   hcan1.Init.SJW = CAN_SJW_1TQ;
-  hcan1.Init.BS1 = CAN_BS1_13TQ;
-  hcan1.Init.BS2 = CAN_BS2_2TQ;
+  hcan1.Init.BS1 = CAN_BS1_3TQ;
+  hcan1.Init.BS2 = CAN_BS2_4TQ;
 
   //BRP = (FPCLK / (BaudRate x (TS1 + TS2 + 3))) - 1
   switch(config_get()->canSpeed){
     case CONFIG_SPEED_125k:
       hcan1.Init.Prescaler = 18;  //test!
+      hcan1.Init.BS1 = CAN_BS1_13TQ;
+      hcan1.Init.BS2 = CAN_BS2_2TQ;
       break;
     case CONFIG_SPEED_250k:
       hcan1.Init.Prescaler = 9;   //250k
+      hcan1.Init.BS1 = CAN_BS1_13TQ;
+      hcan1.Init.BS2 = CAN_BS2_2TQ;
       break;
     case CONFIG_SPEED_500k:
-      hcan1.Init.Prescaler = 9;  //todo set CAN_time_quantum
-      hcan1.Init.SJW = CAN_SJW_1TQ;
-      hcan1.Init.BS1 = CAN_BS1_3TQ;
-      hcan1.Init.BS2 = CAN_BS2_4TQ;
+      hcan1.Init.Prescaler = 9;  
       break;
     case CONFIG_SPEED_1000k:
-      hcan1.Init.Prescaler = 2;  //todo set CAN_time_quantum
+      hcan1.Init.Prescaler = 4;  //todo set CAN_time_quantum
       break;
     default:
-      hcan1.Init.Prescaler = 9;   //250k
+      break;  //500k
   }
 
   if(config_get()->ack){
