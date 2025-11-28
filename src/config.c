@@ -31,7 +31,7 @@ Scanconfig m_configS = {
   .key = {0,0,0,0,0,0,0,0},
   .configMsgIdRx = 0xbb,
   .configMsgIdTx = 0xb9,
-  .canSpeed = CONFIG_SPEED_500k,
+  .canSpeed = 500, //CONFIG_SPEED_500k,
   .pinResetState = 0xffffFFFF,
   //.ack_nor_wu_combo = 1 | (0<<1) | (0<<2) | (0<<3), //ack //noRetransmission //wakeup // reserved
   .ack=1,
@@ -94,7 +94,7 @@ void config_writeDefaults(void){
   Scanconfig cfg = {};
 
   memcpy(&(cfg.key), (uint8_t[]){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},16);
-  cfg.canSpeed = CONFIG_SPEED_500k,
+  cfg.canSpeed = 500; //CONFIG_SPEED_500k,,
   cfg.configMsgIdRx = 0xbb;
   cfg.configMsgIdTx = 0xb9; // if 0, then don't use.
   //
@@ -116,13 +116,18 @@ void config_writeDefaults(void){
 int config_getUserData(int pos, uint8_t* data, int maxLen){
   //int size;
   uint8_t* firstAllowedAddress = (uint8_t*)&(m_config->configMsgIdRx);
+  uint8_t* config = (uint8_t*)m_config;
   uint32_t maxsize = sizeof(Scanconfig)-(firstAllowedAddress -((uint8_t*)&m_config));
   //if(pos >= maxsize){
   //  return 0;
   //}
   int i=0;
   while((pos+i)<maxsize){
-    data[i] = firstAllowedAddress[pos +i];
+    if(&config[pos +i] < firstAllowedAddress){
+      data[i]=0xee; //for empty
+      }else{
+      data[i] = config[pos +i];
+    }
     i++;
     if(i>=maxLen){
       break;
@@ -132,11 +137,11 @@ int config_getUserData(int pos, uint8_t* data, int maxLen){
 }
 
 int config_editDirectMemory(int pos, uint8_t* data, int maxLen){
-  uint8_t* firstAllowedAddress = (uint8_t*)m_config;
+  uint8_t* config = (uint8_t*)m_config;
   uint32_t maxsize = sizeof(Scanconfig);
   int i=0;
   while((pos+i)<maxsize){
-    firstAllowedAddress[pos +i] = data[i];
+    config[pos +i] = data[i];
     i++;
     if(i>=maxLen){
       break;

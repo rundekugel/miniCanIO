@@ -13,6 +13,7 @@
  extern "C" {
 #endif
 
+/*
 enum{
  CONFIG_SPEED_invalid,
  CONFIG_SPEED_10k,
@@ -23,6 +24,7 @@ enum{
  CONFIG_SPEED_1000k,
  CONFIG_SPEED_invalid2 = 0xff
 };
+*/
 
 typedef struct _Scancfgmsg{
   uint32_t msg_id;

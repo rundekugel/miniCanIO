@@ -225,16 +225,35 @@ int main(void)
                       }
                       TxMessage.Data[1] = 3-unlocked;
                       break;
-                    case 0xcf:  //read config
-                      TxMessage.Data[1] = config_getUserData(RxMessage.Data[1], &(TxMessage.Data[2]), 6);
+                    case 0xcf:  //read config 6 bytes
+                      config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
+                      TxMessage.Data[1] = RxMessage.Data[1] *6;
+                      break;
+                    case 0xc4:  //read config values by id
+                      //not implemented, yet.
+                      //need config id table here.
+                      //config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
+                      TxMessage.Data[1] = 0xff;
                       break;
                     case 0xce:  //edit config [pos, size, data]
                       if(unlocked<3){
                         break;
                       }
-                      uint8_t size = RxMessage.Data[2];
-                      if(size > 4) size=4;
-                      TxMessage.Data[1] = config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[3]), size);
+                      {
+                        uint8_t size = RxMessage.Data[2]; 
+                        if(size > 4) size=4;
+                        TxMessage.Data[1] = config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[3]), size);
+                      }
+                      break;
+                    case 0xc2:  //edit config with fixed size=5 and [pos, data]
+                      if(unlocked<3){
+                        break;
+                      }
+                      {
+                        uint8_t size = 5;
+                        config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[2]), size);
+                        TxMessage.Data[1] = RxMessage.Data[1];
+                      }
                       break;
                     case 0xc5:  //reset config to defaults
                       if(unlocked<3){
@@ -332,20 +351,20 @@ static void MX_CAN_Init(void)
 
   //BRP = (FPCLK / (BaudRate x (TS1 + TS2 + 3))) - 1
   switch(config_get()->canSpeed){
-    case CONFIG_SPEED_125k:
+    case 125:
       hcan1.Init.Prescaler = 18;  //test!
       hcan1.Init.BS1 = CAN_BS1_13TQ;
       hcan1.Init.BS2 = CAN_BS2_2TQ;
       break;
-    case CONFIG_SPEED_250k:
+    case 250:
       hcan1.Init.Prescaler = 9;   //250k
       hcan1.Init.BS1 = CAN_BS1_13TQ;
       hcan1.Init.BS2 = CAN_BS2_2TQ;
       break;
-    case CONFIG_SPEED_500k:
+    case 500:
       hcan1.Init.Prescaler = 9;  
       break;
-    case CONFIG_SPEED_1000k:
+    case 1000:
       hcan1.Init.Prescaler = 4;  //todo set CAN_time_quantum
       break;
     default:
