@@ -115,7 +115,7 @@ void config_writeDefaults(void){
 
 int config_getUserData(int pos, uint8_t* data, int maxLen){
   //int size;
-  uint8_t* firstAllowedAddress = (uint8_t*)&(m_config->configMsgIdRx);
+  uint8_t* firstAllowedAddress = (uint8_t*)&(m_config->version);
   uint8_t* config = (uint8_t*)m_config;
   uint32_t maxsize = sizeof(Scanconfig)-(firstAllowedAddress -((uint8_t*)&m_config));
   //if(pos >= maxsize){

@@ -37,7 +37,7 @@ UART_HandleTypeDef huart1;
 /* Private variables ---------------------------------------------------------*/
 #define USE_T_TX 0
 
-CAN_FilterConfTypeDef sFilterConfig;
+CAN_FilterConfTypeDef sFilterConfig;  // used multiple times as temporary config storage
 __attribute__ ((aligned (4))) CanTxMsgTypeDef TxMessage;
 __attribute__ ((aligned (4))) CanRxMsgTypeDef RxMessage;
 /* USER CODE END PV */
@@ -47,8 +47,12 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_CAN_Init(void);
-void Serialprintln(char _out[]);
-void newline(void);
+static void Serialprintln(char _out[]);
+static void newline(void);
+static void setFilters(Pcanconfig config);
+void switchOnMsg(CanRxMsgTypeDef* rxmsg, Pcanconfig config);
+void setGPIOoutput(int pinNumber);
+
 #if USE_T_TX >0
 HAL_StatusTypeDef T_HAL_CAN_Transmit(CAN_HandleTypeDef* hcan, uint32_t Timeout);
 #endif
@@ -72,7 +76,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  GPIOC->BSRR = GPIO_PIN_13; //test 1 = aus
+  GPIOC->BSRR = GPIO_PIN_13; //test 1 = an (low active)
   
   Pcanconfig config = config_get();
   
@@ -103,184 +107,187 @@ int main(void)
 
 
   GPIOC->BRR = GPIO_PIN_13; //test 0 = an
-	HAL_Delay(500);
-        GPIOC->BRR = GPIO_PIN_13; //test 0 = aus
-	Serialprintln("Setting the Messages and perameters");
-	Serialprintln("Starting with sFilterConfig");	
-	sFilterConfig.FilterNumber = 1;
-	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-        //sFilterConfig.FilterMode = CAN_FILTERMODE_IDLIST;
-	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-	sFilterConfig.FilterIdHigh = 0x0000;
-	//
-        sFilterConfig.FilterIdLow = 0x0000;
-	//        sFilterConfig.FilterIdLow = 0xbb<<5;
-        //
-        sFilterConfig.FilterIdHigh = 0x00b2<<5;
-
-        //sFilterConfig.FilterIdLow = 0x00b2;
-	sFilterConfig.FilterMaskIdHigh = 0x000f<<5;
-	sFilterConfig.FilterMaskIdLow = 0x0000;
-	sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;
-	sFilterConfig.FilterActivation = ENABLE;
-	sFilterConfig.BankNumber = 14;  //last bank for can1 = 1st bank for can2
-	
-	Serialprintln("Filter config was done now to link to hcan");
-	
-	HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig);
-	//filter 2
-        sFilterConfig.FilterIdHigh = (config->configMsgIdRx)<<5;
-        sFilterConfig.FilterMaskIdHigh = 0xffff;
-        sFilterConfig.FilterNumber = 2;
-        sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO1;
-	HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig);
-	
-	Serialprintln("All linked up to hcan");
-	
-	Serialprintln("Now for the Tx side of it");
-	
-	Serialprintln("Setting up the TxMessage");
-	TxMessage.IDE = CAN_ID_STD;
-	TxMessage.StdId = config->configMsgIdTx ;
-        //TxMessage.StdId = 0xB2;
-	TxMessage.RTR = CAN_RTR_DATA;
-	
-	TxMessage.DLC = 8;
-        memcpy(&TxMessage.Data , (const uint8_t*)"11111111", 8);
-
+      HAL_Delay(500);
+      GPIOC->BSRR = GPIO_PIN_13; //test 0 = aus
+      Serialprintln("Setting the Messages and perameters");
+      
+      if(config->extendedIds){
+        RxMessage.IDE = CAN_ID_EXT;
+        TxMessage.IDE = CAN_ID_EXT;
+      }else{
         RxMessage.IDE = CAN_ID_STD;
-        // RxMessage.RTR = CAN_RTR_DATA;
-	
-	Serialprintln("Message data configured");
-	Serialprintln("Linking it to the hcan ");
-	
-        GPIOC->BRR = GPIO_PIN_13; //test 0 = an
+        TxMessage.IDE = CAN_ID_STD;
+      }
+      // RxMessage.RTR = CAN_RTR_DATA;
 
-        hcan1.pTxMsg = &TxMessage;
-        hcan1.pRxMsg = &RxMessage;
-        hcan1.pRx1Msg = &RxMessage;
+      Serialprintln("Starting with sFilterConfig");	
+      setFilters(config);
+
+      //filter 2 for control msg
+      sFilterConfig.FilterIdHigh = (config->configMsgIdRx)<<5;
+      sFilterConfig.FilterMaskIdHigh = 0xffff;
+      sFilterConfig.FilterNumber = 2;
+      sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO1;
+      HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig);
+      
+      Serialprintln("All linked up to hcan");
+      
+      Serialprintln("Now for the Tx side of it");
+      
+      TxMessage.StdId = config->configMsgIdTx ;
+      TxMessage.RTR = CAN_RTR_DATA;
+     
+      TxMessage.DLC = 8;
+      memcpy(&TxMessage.Data , (const uint8_t*)"11111111", 8);
+      hcan1.pTxMsg = &TxMessage;
+      hcan1.pRxMsg = &RxMessage;
+      hcan1.pRx1Msg = &RxMessage;
+
+      
+      Serialprintln("Message data configured");
+      Serialprintln("Linking it to the hcan ");
+      
+      GPIOC->BSRR = GPIO_PIN_13; //test 0 = an
 
   /* Infinite loop */
-	HAL_Delay(500);
-        uint32_t i=1;
-        uint8_t hartbeat = 0;
-        uint32_t* data32 = (uint32_t*)(TxMessage.Data);
-        #define timeout_ms 1 
-        char uartbuf[20];
-        int sendit = 0;
+      HAL_Delay(500);
+      uint32_t i=1;
+      uint8_t hartbeat = 0;
+      uint32_t* data32 = (uint32_t*)(TxMessage.Data);
+      #define timeout_ms 1 
+      char uartbuf[20];
+      int sendit = 0;
 
-        Serialprintln("In the loop now");
-        Serialprintln("Poll message..."); 
-        printf("Enter loop.");
-  while (1)
-  {
-                HAL_Delay(10);
-                GPIOC->ODR ^= GPIO_PIN_13; //test 0 = an
-                
-                if(sendit>0 && config->configMsgIdTx>0){
-                  sendit--;
-                  data32[1] = i++;
-                  if(config->dbgOutput){
-                    Serialprintln("Trying to send a message");
-                  }
-                  HAL_CAN_Transmit(&hcan1, timeout_ms);                
-                  if(config->dbgOutput){
-                    Serialprintln("Message sent");
-                  }
-                }
-                
-                if(__HAL_CAN_MSG_PENDING(&hcan1, CAN_FIFO0))    {
-                  HAL_CAN_Receive(&hcan1, CAN_FIFO0, 1);  //todo: use HAL_CAN_Receive_IT with callbacks for rx.
-                  if(config->dbgOutput){
-                    printf("rx0: %x, %x, %x\r\n", RxMessage.StdId, RxMessage.DLC,
-                         RxMessage.Data[4]|(RxMessage.Data[5]<<8));                
-                    //Serialprintln("rx:")
-                    HAL_UART_Transmit(&huart1, (uint8_t *)"rx0:" , 3, 10);
-                    HAL_UART_Transmit(&huart1, &(RxMessage.Data[4]) , 1, 10);
-                    newline();
-                  }
-                }
-                #if 1 //fifo1 used
-                if(__HAL_CAN_MSG_PENDING(&hcan1, CAN_FIFO1))    {                                           
-                  HAL_CAN_Receive(&hcan1, CAN_FIFO1, 1);
-                  if(config->dbgOutput){
-                    printf("rx1: %i, %i, %i\r\n", RxMessage.StdId, RxMessage.DLC, RxMessage.Data[4]);
-                    HAL_UART_Transmit(&huart1, (uint8_t *)"rx1:" , 3, 10);
-                    HAL_UART_Transmit(&huart1, &(RxMessage.Data[4]) , 1, 10);
-                    newline();
-                  }
+      Serialprintln("In the loop now");
+      Serialprintln("Poll message..."); 
+      printf("Enter loop.");
+      while (1)
+      {
+        HAL_Delay(10);
+        GPIOC->ODR ^= GPIO_PIN_13; //test 0 = an
+        
+        if(sendit>0 && config->configMsgIdTx>0){
+          sendit--;
+          data32[1] = i++;
+          if(config->dbgOutput){
+            Serialprintln("Trying to send a message");
+          }
+          HAL_CAN_Transmit(&hcan1, timeout_ms);                
+          if(config->dbgOutput){
+            Serialprintln("Message sent");
+          }
+        }
+        
+        if(__HAL_CAN_MSG_PENDING(&hcan1, CAN_FIFO0))    {
+          HAL_CAN_Receive(&hcan1, CAN_FIFO0, 1);  //todo: use HAL_CAN_Receive_IT with callbacks for rx.
+          switchOnMsg(hcan1.pRxMsg, config);
+          if(config->dbgOutput){
+            printf("rx0: %x, %x, %x\r\n", RxMessage.StdId, RxMessage.DLC,
+                 RxMessage.Data[4]|(RxMessage.Data[5]<<8));                
+            //Serialprintln("rx:")
+            HAL_UART_Transmit(&huart1, (uint8_t *)"rx0:" , 3, 10);
+            HAL_UART_Transmit(&huart1, &(RxMessage.Data[4]) , 1, 10);
+            newline();
+          }
+        }
+        #if 1 //fifo1 used
+        if(__HAL_CAN_MSG_PENDING(&hcan1, CAN_FIFO1))    {                                           
+          HAL_CAN_Receive(&hcan1, CAN_FIFO1, 1);
+          if(config->dbgOutput){
+            printf("rx1: %i, %i, %i\r\n", RxMessage.StdId, RxMessage.DLC, RxMessage.Data[4]);
+            HAL_UART_Transmit(&huart1, (uint8_t *)"rx1:" , 3, 10);
+            HAL_UART_Transmit(&huart1, &(RxMessage.Data[4]) , 1, 10);
+            newline();
+          }
 
-                  if(RxMessage.StdId == config->configMsgIdRx){  // do config
-                    TxMessage.Data[0] = RxMessage.Data[0];  // 1st byte is cmd
-                    TxMessage.Data[1] = 0xe1; //default return value is error.
-                    switch(RxMessage.Data[0]){
-                    case 0xc0:  //unlock/lock
-                      if(memcmp(RxMessage.Data+1, &(config->key[unlocked*6]), 6)) {
-                        unlocked = 0;
-                      }else{
-                        unlocked++;
-                        if(unlocked >=3){
-                          unlocked = 3;
-                        }
-                      }
-                      TxMessage.Data[1] = 3-unlocked;
-                      break;
-                    case 0xcf:  //read config 6 bytes
-                      config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
-                      TxMessage.Data[1] = RxMessage.Data[1] *6;
-                      break;
-                    case 0xc4:  //read config values by id
-                      //not implemented, yet.
-                      //need config id table here.
-                      //config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
-                      TxMessage.Data[1] = 0xff;
-                      break;
-                    case 0xce:  //edit config [pos, size, data]
-                      if(unlocked<3){
-                        break;
-                      }
-                      {
-                        uint8_t size = RxMessage.Data[2]; 
-                        if(size > 4) size=4;
-                        TxMessage.Data[1] = config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[3]), size);
-                      }
-                      break;
-                    case 0xc2:  //edit config with fixed size=5 and [pos, data]
-                      if(unlocked<3){
-                        break;
-                      }
-                      {
-                        uint8_t size = 5;
-                        config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[2]), size);
-                        TxMessage.Data[1] = RxMessage.Data[1];
-                      }
-                      break;
-                    case 0xc5:  //reset config to defaults
-                      if(unlocked<3){
-                        break;
-                      }
-                      config_writeDefaults();
-                      TxMessage.Data[1] = 0;
-                      break;
-                    
-                    case 0xc9:  //write config from ram to flash
-                      if(unlocked<3){
-                        break;
-                      }
-                      config_write(config_get());
-                      TxMessage.Data[1] = 0;
-                      break;
-                    }
-                    HAL_CAN_Transmit(&hcan1, 10);
-                  }
+          if(RxMessage.StdId == config->configMsgIdRx){  // do config
+            TxMessage.Data[0] = RxMessage.Data[0];  // 1st byte is cmd
+            TxMessage.Data[1] = 0xe1; //default return value is error.
+            switch(RxMessage.Data[0]){
+            case 0x11:  //init
+              config->valid = 0;
+              config = config_get();
+              MX_CAN_Init();
+              setFilters(config);
+            case 0xc0:  //unlock/lock
+              if(memcmp(RxMessage.Data+1, &(config->key[unlocked*6]), 6)) {
+                unlocked = 0; //invalid key!
+              }else{
+                unlocked++;
+                if(unlocked >=3){
+                  unlocked = 3;
                 }
-                #endif
-                RxMessage.DLC = 0;
-                if(config->dbgOutput){
-                  uint8_t d= '@'|(hartbeat & 0x1f );
-                  HAL_UART_Transmit(&huart1, &d , 1, 10);
-                }
-                hartbeat++;
+              }
+              TxMessage.Data[1] = 3-unlocked;
+              break;
+            case 0xcf:  //read config 6 bytes
+              config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
+              TxMessage.Data[1] = RxMessage.Data[1] ;
+              break;
+            case 0xc4:  //read config values by id
+              //not implemented, yet.
+              //need config id table here.
+              //config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
+              //TxMessage.Data[1] = 0xff;
+              break;
+            case 0xce:  //edit config [pos, size, data]
+              if(unlocked<3){
+                break;
+              }
+              {
+                uint8_t size = RxMessage.Data[2]; 
+                if(size > 4) size=4;
+                TxMessage.Data[1] = config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[3]), size);
+              }
+              break;
+            case 0xc2:  //edit config with fixed size=5 and pos is factor 5 [pos, data]
+              if(unlocked<3){
+                break;
+              }
+              {
+                uint8_t size = 5;
+                config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[2]), size);
+                TxMessage.Data[1] = RxMessage.Data[1];
+              }
+              break;
+              /*
+            case 0xc3:  //edit config with fixed size=5 and pos is factor 5 [pos, data]
+              if(unlocked<3){
+                break;
+              }
+              {
+                uint8_t size = 5;
+                config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[2]), size);
+                TxMessage.Data[1] = RxMessage.Data[1];
+              }
+              break;
+              */
+            case 0xc5:  //reset config to defaults
+              if(unlocked<3){
+                break;
+              }
+              config_writeDefaults();
+              TxMessage.Data[1] = 0;
+              break;
+            
+            case 0xc9:  //write config from ram to flash
+              if(unlocked<3){
+                break;
+              }
+              config_write(config_get());
+              TxMessage.Data[1] = 0;
+              break;
+            }
+            HAL_CAN_Transmit(&hcan1, 10);
+          }
+        }
+        #endif
+        //RxMessage.DLC = 0;
+        if(config->dbgOutput){
+          uint8_t d= '@'|(hartbeat & 0x1f );
+          HAL_UART_Transmit(&huart1, &d , 1, 10);
+        }
+        hartbeat++;
                   
   }
 
@@ -334,6 +341,50 @@ void SystemClock_Config(void)
 
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+}
+
+int searchMsgId(void){
+  //search in filters
+  return 0;
+}
+
+void setFilters(Pcanconfig config){
+  //read from config and write to registers
+  //defaults:
+  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  sFilterConfig.FilterIdLow = 0x0000;
+  sFilterConfig.FilterMaskIdLow = 0x0000;
+  sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+  sFilterConfig.FilterActivation = ENABLE;
+  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+  sFilterConfig.BankNumber = 14;  //last bank for can1 = 1st bank for can2
+  if(config->filtersAreList){
+    sFilterConfig.FilterMode = CAN_FILTERMODE_IDLIST;
+  }else{
+    sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+  }
+
+  Pcancfgmsg msgCfg = config->msgCfg;
+
+  for(int filterN=0; filterN < CONFIG_MAX_MSG_ENTRIES; filterN++){
+    if(msgCfg[filterN].msg_id ==0)
+      continue;
+    if(msgCfg[filterN].msg_id ==0xffff)
+      continue;
+
+    sFilterConfig.FilterNumber = filterN +1;
+    if(config->extendedIds){
+      sFilterConfig.FilterIdLow = msgCfg[filterN].msg_id & 0xffff;
+      sFilterConfig.FilterIdHigh = (msgCfg[filterN].msg_id <<16)& 0x3fff;
+      sFilterConfig.FilterMaskIdLow = 0xffff;
+      sFilterConfig.FilterMaskIdHigh = 0x3fff;
+    }else{
+      sFilterConfig.FilterIdHigh = msgCfg[filterN].msg_id <<5;
+      sFilterConfig.FilterMaskIdHigh = 0xffff <<5;
+    }    
+    HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig);
+    setGPIOoutput(msgCfg->outputPin);
+  }
 }
 
 /* CAN init function */
@@ -398,6 +449,78 @@ static void MX_CAN_Init(void)
 	}
 
   __HAL_CAN_DBG_FREEZE(&hcan1, 0);
+}
+
+
+void setGPIOoutput(int pinNumber){
+  //pinnumber is from 0..63 for PinA.0 to PinD.15
+  GPIO_TypeDef* gpio = GPIOA;
+  if(pinNumber > 15)
+    gpio = GPIOB;
+  if(pinNumber > 31)
+    gpio = GPIOC;
+  if(pinNumber > 47)
+    gpio = GPIOD;
+    GPIO_InitTypeDef GPIO_InitStruct;
+    GPIO_InitStruct.Pin = 1 < pinNumber;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; 
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(gpio, &GPIO_InitStruct);
+}
+
+void switchGPIO(int pin, enum CFG_SWITCH_TYPE action){
+  GPIO_TypeDef* gpio = GPIOA;
+  if(pin > 47)
+    gpio = GPIOD;
+  else if(pin > 31)
+    gpio = GPIOC;
+  else if(pin > 15)
+    gpio = GPIOB;
+  
+  switch(action){
+  case CONFIG_SWITCH_TYPE_ON:
+    gpio->BRR = 1<<pin;
+    break;
+  case CONFIG_SWITCH_TYPE_OFF:
+    gpio->BSRR = 1<<pin;
+    break;
+  case CONFIG_SWITCH_TYPE_TOGGLE:
+    gpio->ODR ^= 1<<pin;
+    break;
+  default:
+    break;
+  }
+}
+
+void switchOnMsg(CanRxMsgTypeDef* rxmsg, Pcanconfig config){
+  Pcancfgmsg cfgmsg = config->msgCfg;
+
+  for(int n =0; n<CONFIG_MAX_MSG_ENTRIES; n++){
+    if(cfgmsg->msg_id == rxmsg->StdId){ //search all
+      uint8_t val = rxmsg->Data[cfgmsg->bytePos] & cfgmsg->bitMask;
+      uint8_t soll = cfgmsg->verifyValue;
+      switch(cfgmsg->verifyType){
+        case CONFIG_VERIFY_TYPE_EQUAL:
+          if(val == soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          break;
+        case CONFIG_VERIFY_TYPE_NOT_EQUAL:
+          if(val != soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          break;
+        case CONFIG_VERIFY_TYPE_GREATER:
+          if(val > soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          break;
+        case CONFIG_VERIFY_TYPE_SMALLER:
+          if(val < soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          break;
+        case CONFIG_VERIFY_TYPE_AND:
+          if(val & soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          break;
+        case CONFIG_VERIFY_TYPE_XOR:  //does this make sense?
+          if(val ^ soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          break;
+      }
+    }
+  }
 }
 
 /* USART1 init function */

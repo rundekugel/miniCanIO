@@ -13,45 +13,61 @@
  extern "C" {
 #endif
 
-/*
-enum{
- CONFIG_SPEED_invalid,
- CONFIG_SPEED_10k,
- CONFIG_SPEED_100k,
- CONFIG_SPEED_125k,  
- CONFIG_SPEED_250k,  
- CONFIG_SPEED_500k,  
- CONFIG_SPEED_1000k,
- CONFIG_SPEED_invalid2 = 0xff
-};
-*/
+typedef enum CFG_VERIFY_TYPE{
+ CONFIG_VERIFY_TYPE_EQUAL,
+ CONFIG_VERIFY_TYPE_NOT_EQUAL,
+ CONFIG_VERIFY_TYPE_GREATER,
+ CONFIG_VERIFY_TYPE_SMALLER,
+ CONFIG_VERIFY_TYPE_AND,
+ CONFIG_VERIFY_TYPE_XOR,  //does this make sense? could be done in config with EQUAL and (not value)
+ CONFIG_VERIFY_TYPE_INVALID = 0xff
+ // senseless: CONFIG_VERIFY_TYPE_OR,
+}eCFG_VERIFY_TYPE;
+
+typedef enum CFG_SWITCH_TYPE{
+ CONFIG_SWITCH_TYPE_ON,
+ CONFIG_SWITCH_TYPE_OFF,
+ CONFIG_SWITCH_TYPE_TOGGLE,
+ /* //not implemented, yet
+ CONFIG_SWITCH_TYPE_BLINK,  
+ CONFIG_SWITCH_TYPE_TIME,
+ CONFIG_SWITCH_TYPE_PWM,
+ CONFIG_SWITCH_TYPE_FREQ,
+ */
+ CONFIG_SWITCH_TYPE_INVALID = 0xff
+}eCFG_SWITCH_TYPE;
+
 
 typedef struct _Scancfgmsg{
-  uint32_t msg_id;
+  uint32_t msg_id:29;
+  uint32_t reserved:1;
+  uint32_t msg_id_is_ext:1;
   uint8_t bytePos;
   uint8_t bitMask;
   uint8_t verifyType;
   uint8_t verifyValue;
   uint8_t switchType;
   uint8_t outputPin;
-}Scancfgmsg, Pcancfgmsg;
+}Scancfgmsg, *Pcancfgmsg; //size: 3*4 +6 = 22
 
 typedef struct _Scanconfig{
     uint32_t valid;
     uint8_t key[16];
-    uint16_t version;
-    uint16_t canSpeed;
+    uint16_t version;   // pos20 = 0x14
+    uint16_t canSpeed;  //pos 22 = 0x16
     uint32_t configMsgIdRx;
     uint32_t configMsgIdTx;
-    uint32_t pinResetState;
-    //union { 
-      uint32_t ack:1;
-      uint32_t noRetransmission:1;
-      uint32_t wakeup:1;  //for future use
-      uint32_t res:29;
-      //uint32_t ack_nor_wu_combo;
-    //};
-    Scancfgmsg msgCfg[CONFIG_MAX_MSG_ENTRIES];
+    uint32_t pinResetState; //0x20 = 32
+
+    uint32_t ack:1;
+    uint32_t noRetransmission:1;
+    uint32_t wakeup:1;  //for future use
+    uint32_t extendedIds:1;
+    uint32_t filtersAreList:1;
+    uint32_t res:27;
+
+    Scancfgmsg msgCfg[CONFIG_MAX_MSG_ENTRIES];  // pos36=0x24
+
     //union {
       uint32_t dbgSleepMode:1;
       uint32_t dbgOutput:1;
