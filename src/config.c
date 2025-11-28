@@ -31,7 +31,7 @@ Scanconfig m_configS = {
   .key = {0,0,0,0,0,0,0,0},
   .configMsgIdRx = 0xbb,
   .configMsgIdTx = 0xb9,
-  .canSpeed = CONFIG_SPEED_250k, //CONFIG_SPEED_500k,
+  .canSpeed = CONFIG_SPEED_500k,
   .pinResetState = 0xffffFFFF,
   //.ack_nor_wu_combo = 1 | (0<<1) | (0<<2) | (0<<3), //ack //noRetransmission //wakeup // reserved
   .ack=1,
@@ -94,7 +94,7 @@ void config_writeDefaults(void){
   Scanconfig cfg = {};
 
   memcpy(&(cfg.key), (uint8_t[]){0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},16);
-  cfg.canSpeed = CONFIG_SPEED_250k, //CONFIG_SPEED_500k
+  cfg.canSpeed = CONFIG_SPEED_500k,
   cfg.configMsgIdRx = 0xbb;
   cfg.configMsgIdTx = 0xb9; // if 0, then don't use.
   //

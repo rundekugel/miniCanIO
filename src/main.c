@@ -177,7 +177,7 @@ int main(void)
                 HAL_Delay(10);
                 GPIOC->ODR ^= GPIO_PIN_13; //test 0 = an
                 
-                if(sendit && config->configMsgIdTx){
+                if(sendit>0 && config->configMsgIdTx>0){
                   sendit--;
                   data32[1] = i++;
                   if(config->dbgOutput){
@@ -320,8 +320,16 @@ void SystemClock_Config(void)
 /* CAN init function */
 static void MX_CAN_Init(void)
 {
+  #define CAN_BS1_13TQ                ((uint32_t)(CAN_BTR_TS1_3 | CAN_BTR_TS1_2))                  /*!< 13 time quantum */
   Pcanconfig cfg = config_get();
   hcan1.Instance = CAN1;
+
+  //default settings for 250k / 125k
+  hcan1.Init.SJW = CAN_SJW_1TQ;
+  hcan1.Init.BS1 = CAN_BS1_13TQ;
+  hcan1.Init.BS2 = CAN_BS2_2TQ;
+
+  //BRP = (FPCLK / (BaudRate x (TS1 + TS2 + 3))) - 1
   switch(config_get()->canSpeed){
     case CONFIG_SPEED_125k:
       hcan1.Init.Prescaler = 18;  //test!
@@ -330,7 +338,10 @@ static void MX_CAN_Init(void)
       hcan1.Init.Prescaler = 9;   //250k
       break;
     case CONFIG_SPEED_500k:
-      hcan1.Init.Prescaler = 4;  //todo set CAN_time_quantum
+      hcan1.Init.Prescaler = 9;  //todo set CAN_time_quantum
+      hcan1.Init.SJW = CAN_SJW_1TQ;
+      hcan1.Init.BS1 = CAN_BS1_3TQ;
+      hcan1.Init.BS2 = CAN_BS2_4TQ;
       break;
     case CONFIG_SPEED_1000k:
       hcan1.Init.Prescaler = 2;  //todo set CAN_time_quantum
@@ -345,11 +356,6 @@ static void MX_CAN_Init(void)
     hcan1.Init.Mode = CAN_MODE_SILENT;
   }
 
-  #define CAN_BS1_13TQ                ((uint32_t)(CAN_BTR_TS1_3 | CAN_BTR_TS1_2))                  /*!< 13 time quantum */
-
-  hcan1.Init.SJW = CAN_SJW_1TQ;
-  hcan1.Init.BS1 = CAN_BS1_13TQ;
-  hcan1.Init.BS2 = CAN_BS2_2TQ;
   hcan1.Init.TTCM = DISABLE;
   hcan1.Init.ABOM = DISABLE;
   hcan1.Init.AWUM = DISABLE;
