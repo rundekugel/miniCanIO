@@ -70,7 +70,7 @@ typedef struct _Scancfgmsg{
   uint8_t outputPin;
 }Scancfgmsg, *Pcancfgmsg; //size: 3*4 +6 = 22
 ```
-
+Details see: [src/config.h ](src/config.h)
 ## python script for reading and editing config data
 to be done
 
