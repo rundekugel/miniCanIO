@@ -1,0 +1,49 @@
+VERSION ""
+
+NS_ :
+    BA_
+    BA_DEF_
+    BA_DEF_DEF_
+    BA_DEF_DEF_REL_
+    BA_DEF_REL_
+    BA_DEF_SGTYPE_
+    BA_REL_
+    BA_SGTYPE_
+    BO_TX_BU_
+    BU_BO_REL_
+    BU_EV_REL_
+    BU_SG_REL_
+    CAT_
+    CAT_DEF_
+    CM_
+    ENVVAR_DATA_
+    EV_DATA_
+    FILTER
+    NS_DESC_
+    SGTYPE_
+    SGTYPE_VAL_
+    SG_MUL_VAL_
+    SIGTYPE_VALTYPE_
+    SIG_GROUP_
+    SIG_TYPE_REF_
+    SIG_VALTYPE_
+    VAL_
+    VAL_TABLE_
+
+BS_:
+
+BU_: CANIO
+
+BO_ 185 CANIO_TX: 8 CANIO
+ SG_ config_mux M : 0|8@1+ (1,0) [0|0] "Return message" CANIO
+ SG_ config_unlock m192 : 8|8@1+ (1,0) [0|9] "lock level (0=unlocked)" CANIO
+ SG_ config_data  m192 : 16|48@1+ (1,0) [0|4294967295] "6 bytes from key" CANIO
+ SG_ config_block m207 :  8|8@1+ (1,0) [0|255] "block offset (6 bytes)" CANIO
+ SG_ config_pos   m207 :  8|8@1+ (4,0) [0|255] "byte offset" CANIO
+
+BO_ 187 CANIO_RX: 8 CANIO
+ SG_ config_mux M : 0|8@1+ (1,0) [0|0] "Control message" CANIO
+ SG_ config_unlock m192 : 8|48@1+ (1,0) [0|99999999] "key-array" CANIO
+ SG_ config_data  m192 : 16|48@1+ (1,0) [0|4294967295] "6 bytes from key" CANIO
+ SG_ config_block m207 :  8|8@1+ (1,0) [0|255] "read block offset (6 bytes)" CANIO
+ SG_ config_pos   m207 :  8|8@1+ (4,0) [0|255] "read byte offset" CANIO
