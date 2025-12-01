@@ -1,3 +1,8 @@
 /Output/*
 /miniCanIO.emSession
 /miniCanIO_Debug.jlink
+/configapp/__pycache__/revision.cpython-312.pyc
+/configapp/env/*
+/configapp/revision.py
+/revision.py
+*/__pycache__/*
