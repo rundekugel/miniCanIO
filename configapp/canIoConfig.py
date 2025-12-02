@@ -82,6 +82,7 @@ def readAllConfig():
          time.sleep(0.01)
          if t0 != globs.lastCanMsg.timestamp:
             break
+   time.sleep(3)
    globs.config.decode(globs.rxconfig)
 
 
@@ -102,6 +103,8 @@ def main():
   cansend([0xcf,0])
   # print(globs.bus.recv())
   readAllConfig()
+  print(globs.config.toString())
+  
   doit = 1
   while doit:
     time.sleep(1)

@@ -22,6 +22,10 @@ __version__ = "0.0.1a"
 NUMBER_OF_MSG_FILTERS = 9
 CONFIG_SIZE = 36 + 22*NUMBER_OF_MSG_FILTERS 
 
+verifyTypes = ["==","!=",">","<","AND","XOR"]
+switchTypes = ["ON","OFF","TOGGLE","BLINK","TIME","PWM","FREQ"]
+
+
 class cfgmsg:
    unlock = 0xc0
    readconfig = 0xcf
@@ -71,18 +75,38 @@ class filterconfig:
             self.addToAllFilters()
       return self
    
-   def getFilterByObjId(id: int): 
+   def getFilterByObjId(id: int)->object: 
       for filter in filterconfig._allFilters:
          if filter.objId == id:
             return filter
       return None
       
-   def getAsBytes(self):
+   def getAsBytes(self)->bytes:
+      if self.canid==None:
+         return b""
       msgid = self.canid | ([0,1<<31][self.ext>0])
       data = struct.pack(self.structstring, msgid, self.bytepos, self.bitmask, 
                          self.verifyType, self.verifyValue, self.switchType, self.pin)
       return data
    
+   def toString(self) -> str:
+      text = os.linesep +f"Filter id: {self.objId}"+os.linesep
+      try:
+         if self.canid==None:
+            text +="Empty"+os.linesep
+            return text
+         text += f"CAN id: {hex(self.canid)}"+os.linesep
+         text += f"msg id is extendeds: {self.ext}"+os.linesep
+         text += f"byte pos: {self.bytepos}"+os.linesep
+         text += f"bit mask: {self.bitmask}=bin:{bin(self.bitmask)}"+os.linesep
+         text += f"verify type: {self.verifyType}: {verifyTypes[self.verifyType]}"+os.linesep
+         text += f"verify value: {self.verifyValue}"+os.linesep
+         text += f"switch type: {self.switchType}: {switchTypes[self.switchType]}"+os.linesep
+         text += f"output pin: {self.pin}"+os.linesep
+      except Exception as e:
+        text += os.linesep+str(e) 
+      return text
+
    def addFilterByData(data, objId=None):
       _ = filterconfig(data, objId)
 
@@ -98,7 +122,7 @@ class filterconfig:
       return data
    
 class config:
-   size = 22
+   size = 36
    # configAsBytes = b"\0"*CONFIG_SIZE
    valid = None
    key = []
@@ -113,7 +137,7 @@ class config:
    wakeup=0
    extendedIds=0
    filtersAreList=0
-   filters = [filterconfig]
+   filters = [filterconfig()]
    dbgValues = None
    structstring = sh.U32 +"16"+sh.STRING +2*sh.U16 +4*sh.U32 # +9*filterconfig.structstring
    
@@ -135,12 +159,13 @@ class config:
       self.wakeup =(bc & 4)>0
       self.extendedIds =(bc & 8)>0
       self.filtersAreList =(bc & 16)>0
-      
+
       f=[]
       for i in range(9):
-         pos=i*filterconfig.size
+         pos=self.size + i*filterconfig.size
          # f.append(filterconfig(data[pos:pos+filterconfig.size]))
          filterconfig(data[pos:pos+filterconfig.size], i)
+      self.filters = filterconfig._allFilters
       return self
 
    def asBytesSmall(me, cfg=None) -> bytes:
@@ -158,4 +183,26 @@ class config:
       data = me.asBytesSmall()
       data += filterconfig.getAllFiltersAsBytes()
       return data
+   
+   def asTextSmall(me)->str:
+      text = f"valid: {hex(me.valid)}"+os.linesep
+      text += f"key: {ba.hexlify(me.key)}"+os.linesep
+      text += f"version: 0x{hex(me.version)}"+os.linesep
+      text += f"canSpeed: {me.canspeed_k} kb/s"+os.linesep
+      text += f"configMsgIdRx: 0x{hex(me.rxid)}"+os.linesep
+      text += f"configMsgIdTx: 0x{hex(me.txid)}"+os.linesep
+      text += f"pinResetState: 0x{hex(me.pinResetState)}"+os.linesep
+      text += f"ack: {me.ack}"+os.linesep
+      text += f"noRetransmission: {me.noRetransmission}"+os.linesep
+      text += f"wakeup: {me.wakeup}"+os.linesep
+      text += f"extendedIds: {me.extendedIds}"+os.linesep
+      text += f"filtersAreList: {me.filtersAreList}"+os.linesep
+      text += f"Number of filters: {len(filterconfig._allFilters)}"+os.linesep
+      return text
+   
+   def toString(me)->str:
+      text = me.asTextSmall()
+      for f in me.filters:
+         text += f.toString()
+      return text 
 #eof
