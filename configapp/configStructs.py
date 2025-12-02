@@ -39,7 +39,7 @@ class filterconfig:
    bitmask = 0x0000
    ext = False
    pin = None
-   structstring = sh.U32 +6*sh.U8
+   structstring = sh.LITTLE_ENDIAN +sh.U32 +6*sh.U8
    count = 0
    _allFilters = []
 
@@ -116,13 +116,13 @@ class filterconfig:
       data = b"\0"*(filterconfig.size * NUMBER_OF_MSG_FILTERS)
       for f in filters:
          if f.canid != 0:
-            ld = data[:f.objId]
-            rd = data[f.objId+filterconfig.size:]
+            ld = data[:f.objId*f.size]
+            rd = data[f.objId*f.size+filterconfig.size:]
             data = ld + f.getAsBytes() +rd
       return data
    
 class config:
-   size = 36
+   size = 40
    # configAsBytes = b"\0"*CONFIG_SIZE
    valid = None
    key = []
@@ -137,9 +137,9 @@ class config:
    wakeup=0
    extendedIds=0
    filtersAreList=0
-   filters = [filterconfig()]
+   filters = []
    dbgValues = None
-   structstring = sh.U32 +"16"+sh.STRING +2*sh.U16 +4*sh.U32 # +9*filterconfig.structstring
+   structstring = sh.LITTLE_ENDIAN +sh.U32 +"16"+sh.STRING +2*sh.U16 +4*sh.U32 # +9*filterconfig.structstring
    
    def __init__(self, data = None):
       if isinstance(data, (str, bytes, list)):
@@ -181,7 +181,7 @@ class config:
 
    def asBytesWithFilters(me)-> bytes:
       data = me.asBytesSmall()
-      data += filterconfig.getAllFiltersAsBytes()
+      data += filterconfig.getAllFiltersAsBytes(me.filters)
       return data
    
    def asTextSmall(me)->str:

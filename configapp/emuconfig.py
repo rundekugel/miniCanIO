@@ -30,7 +30,7 @@ class cfgmsg:
    saveconfig = 0xc9
 
 class globs:
-  verbosity = 1
+  verbosity = 3
   interface = 'socketcan'
   channel = 'vcan0'  
   bus : can.BusABC
@@ -62,19 +62,26 @@ def fillcfg():
    c.extendedIds=0
    c.filtersAreList=0
    f0=configStructs.filterconfig()
-   f0.canid=0xbf
+   f0.canid=0x1bf
    f0.bytepos=2
    f0.pin=3
    f0.switchType=2
    f0.verifyValue=33
    f0.verifyType=1
    configStructs.filterconfig._allFilters.append(f0)
-   c.filters=[f0]
-   f1=configStructs.filterconfig()
+   # c.filters=[f0]
+   f1=configStructs.filterconfig(objId=1)
    f1.__dict__=dict(f0.__dict__)
-   f1.canid=0xbe
+   f1.canid=0x2be
+   f1.objId=1
    f1.pin=4
    configStructs.filterconfig._allFilters.append(f1)
+   f2=configStructs.filterconfig(objId=2)
+   f2.__dict__=dict(f0.__dict__)
+   f2.objId=2
+   f2.canid=0x3be
+   f2.pin=5
+   configStructs.filterconfig._allFilters.append(f2)
    c.filters=configStructs.filterconfig._allFilters
    globs.config = c
    
@@ -92,6 +99,8 @@ def main():
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
 
   cfgAsData = globs.config.asBytesWithFilters()
+  if globs.verbosity>1:
+	  print(ba.hexlify(cfgAsData," "))
 
   size = len(cfgAsData)
   block=0

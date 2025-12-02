@@ -66,7 +66,7 @@ typedef struct _Scanconfig{
     uint32_t filtersAreList:1;
     uint32_t res:27;
 
-    Scancfgmsg msgCfg[CONFIG_MAX_MSG_ENTRIES];  // pos36=0x24
+    Scancfgmsg msgCfg[CONFIG_MAX_MSG_ENTRIES];  // pos40
 
     //union {
       uint32_t dbgSleepMode:1;
