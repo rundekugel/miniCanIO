@@ -48,7 +48,7 @@ typedef struct _Scancfgmsg{
   uint8_t verifyValue;
   uint8_t switchType;
   uint8_t outputPin;
-}Scancfgmsg, *Pcancfgmsg; //size: 3*4 +6 = 22
+}Scancfgmsg, *Pcancfgmsg; //size: 4 +6 = 10
 
 typedef struct _Scanconfig{
     uint32_t valid;
