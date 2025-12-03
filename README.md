@@ -72,8 +72,8 @@ typedef struct _Scancfgmsg{
 ```
 Details see: [src/config.h ](src/config.h)
 ## python script for reading and editing config data
-to be done
+[configapp/canIoConfig.py ](configapp/canIoConfig.py)
 
 ## DBC file for CAN config messages
-work in progress
+[dbc/canIO.dbc](dbc/canIO.dbc)
 
