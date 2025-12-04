@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-
+"""This is generating a file with git revision infos 
+to be implemented in a python script"""
 import os
 
-#os.system("git r")
-f=open("."+os.sep+"revision.py","w")
-f.write("hash=1234567\r\n")
+dest="."+os.sep+"revision.py"
+f=open(dest,"w")
+f.write("hash=")
 f.close()
-print("done.")
+os.system("git rev-parse --short HEAD >> "+dest)
