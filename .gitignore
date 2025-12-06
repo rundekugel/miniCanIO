@@ -9,3 +9,4 @@
 /configapp/build/*
 /configapp/dist/*
 /configapp/canIoConfig.spec
+/configapp/*.cfg

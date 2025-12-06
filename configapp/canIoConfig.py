@@ -41,6 +41,7 @@ class globs:
   lockstatus = 99
   lastCanMsg = can.Message()
   config = None
+  configfile=None
 
 
 def cansend(msg):
@@ -111,26 +112,30 @@ def main():
   if p0=="-txid": globs.verbosity = int(p1, 0)
   if p0=="-pin": cmd,param = "p", p1
   if p0== "-cfg?": cmd,param ="c?",p1
-  
+  if p0== "-cfg": globs.configfile = p1 
 
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
   globs.bus.filters = filters
   globs.notifier = can.Notifier(globs.bus, listeners=[can_rx_handler]) 
   cansend([0xcf,0])
   # print(globs.bus.recv())
-  readAllConfig()
-  if globs.verbosity:
-   print(globs.config.toString())
-  if not cmd:  #"c?":
-     cfg = globs.config.asJson()
-     if globs.verbosity:
-      print(cfg)
-     if param:
+  if cmd=="c?":
+      readAllConfig()
+      if globs.verbosity:
+         print(globs.config.toString())
+      cfg = globs.config.asJson()
+      if globs.verbosity:
+         print(cfg)
+      if param:
         with open(param, "w") as f:
          f.write(cfg)
 
-  
-  # print("\rchange config?")
+  if 1: # cmd=="-cfg":
+     p1="a.cfg"
+     globs.config.parseFile(p1)
+  #  
+     if globs.verbosity:
+         print(globs.config.asJson())
   doit = 1
   while doit:
     time.sleep(1)

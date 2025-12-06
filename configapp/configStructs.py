@@ -26,7 +26,9 @@ CONFIG_SIZE = 36 + 22*NUMBER_OF_MSG_FILTERS
 verifyTypes = ["==","!=",">","<","AND","XOR"]
 switchTypes = ["ON","OFF","TOGGLE","BLINK","TIME","PWM","FREQ"]
 
-
+usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
+valueashex = ("canid","bitmask", "rxid", "txid" )
+                    
 class cfgmsg:
    unlock = 0xc0
    readconfig = 0xcf
@@ -46,7 +48,7 @@ class filterconfig:
 
    def __init__(self, data = None, objId = None):
       if 0: # objId==None:
-         objId = filterconfig.count
+         self.objId = filterconfig.count
          filterconfig.count+=1
       if isinstance(data, (str, bytes, list)):
          self.decode(data)
@@ -76,6 +78,23 @@ class filterconfig:
             self.addToAllFilters()
       return self
    
+   def parseFromDict(self, filterdict):
+      cfg = dict()
+      for k in filterdict:
+         v=filterdict[k]
+         if k in usekeys:
+            if isinstance(v, str):
+               if k in valueashex:
+                  v = int(v, 0)
+               if k == "verifyType":
+                  v=verifyTypes.index(v)
+               if k == "switchType":
+                  v= switchTypes.index(v)                  
+         cfg[k] = v
+      self.__dict__ = cfg
+      return filter
+      
+
    def getFilterByObjId(id: int)->object: 
       for filter in filterconfig._allFilters:
          if filter.objId == id:
@@ -110,11 +129,11 @@ class filterconfig:
    
    def asJson(self, asHex=True)->str:
       usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
-      valueashex = ("canid","bitmask" )
+      #valueashex = ("canid","bitmask" )
       cfg =dict()
       for k in usekeys:
          v = self.__dict__.get(k)
-         if k in valueashex:
+         if asHex and k in valueashex:
             v = hex(v)
          if k == "verifyType":
             v=verifyTypes[self.verifyType]
@@ -125,19 +144,13 @@ class filterconfig:
       cfgjsn = json.dumps(cfg)
       return cfgjsn
 
+
    def asDict(self, asHex=True)->str:
-      usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
-      valueashex = ("canid","bitmask" )
+      #usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
+      #valueashex = ("canid","bitmask" )
       cfg =dict()
       for k in usekeys:
          v = self.__dict__.get(k)
-         if k in valueashex:
-            v = hex(v)
-         if k == "verifyType":
-            v=verifyTypes[self.verifyType]
-         if k == "switchType":
-            v= switchTypes[self.switchType]
-
          cfg[k] = v
       return cfg
 
@@ -203,6 +216,42 @@ class config:
       self.filters = filterconfig._allFilters
       return self
 
+   def parseFile(self, filename):
+      usekeys = ("canspeed","rxid","txid","pinResetState","ack","noRetransmission",
+                 "wakeup","extendedIds","filtersAreList", "filters")
+      valueashex = ("rxid","txid","pinResetState", "canid","bytemask","bitmask","verifyValue") # or bin
+      try:
+         f = open(filename, "r")
+         jscfg = json.load(f)
+         f.close()
+      except Exception as e:
+         print("error:",e)
+         return None
+      for k in jscfg:
+         if k in usekeys:
+            v = jscfg[k]
+            if k in valueashex:
+               if isinstance(v, str):
+                  self.__dict__[k] = int(v, 0)
+                  continue
+            self.__dict__[k] = v
+         filters = self.filters
+      self.filters=[]
+      for f in filters:
+         f0=filterconfig()
+         f0.parseFromDict(f)
+
+         self.filters.append(f0)
+         if 0:
+            for k in f:
+               if k in valueashex:
+                  v = f[k]
+                  if isinstance(v, str):
+                     v=int(v, 0)
+                     f[k] = v
+
+      return self
+   
    def asBytesSmall(me, cfg=None) -> bytes:
       if cfg==None:
           cfg = me
@@ -247,13 +296,15 @@ class config:
       cfg =dict()
       for k in usekeys:
          v = me.__dict__.get(k)
-         if k in valueashex:
-            v = hex(v)
+         if asHex and k in valueashex:
+            if isinstance(v, int):
+               v = hex(v)
          cfg[k] = v
       filters = []
+      cfg["filters"]=[]
       for f in me.filters:
-         filters.append(f.asDict(asHex=asHex))
-      cfg["filters"]=filters
+         filters.append(f)
+         cfg["filters"].append(f.asDict())
       cfgjsn = json.dumps(cfg)
       return cfgjsn
    
