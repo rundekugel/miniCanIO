@@ -95,7 +95,10 @@ def main():
     {"can_id": globs.msgIdRx, "can_mask": 0x7ff, "extended": False},
   ]
 
+  cmd, param = "", ""
+
   globs.config = config();
+
 
   for p in sys.argv:
      if "=" in p:
@@ -107,6 +110,7 @@ def main():
   if p0=="-rxid": globs.verbosity = int(p1, 0)
   if p0=="-txid": globs.verbosity = int(p1, 0)
   if p0=="-pin": cmd,param = "p", p1
+  if p0== "-cfg?": cmd,param ="c?",p1
   
 
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
@@ -115,8 +119,18 @@ def main():
   cansend([0xcf,0])
   # print(globs.bus.recv())
   readAllConfig()
-  print(globs.config.toString())
-  print("\rchange config?")
+  if globs.verbosity:
+   print(globs.config.toString())
+  if not cmd:  #"c?":
+     cfg = globs.config.asJson()
+     if globs.verbosity:
+      print(cfg)
+     if param:
+        with open(param, "w") as f:
+         f.write(cfg)
+
+  
+  # print("\rchange config?")
   doit = 1
   while doit:
     time.sleep(1)

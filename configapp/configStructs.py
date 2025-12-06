@@ -9,6 +9,7 @@ import can
 import binascii as ba
 import struct
 import structhelper as sh
+import json
 
 try:
     import revision
@@ -106,6 +107,39 @@ class filterconfig:
       except Exception as e:
         text += os.linesep+str(e) 
       return text
+   
+   def asJson(self, asHex=True)->str:
+      usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
+      valueashex = ("canid","bitmask" )
+      cfg =dict()
+      for k in usekeys:
+         v = self.__dict__.get(k)
+         if k in valueashex:
+            v = hex(v)
+         if k == "verifyType":
+            v=verifyTypes[self.verifyType]
+         if k == "switchType":
+            v= switchTypes[self.switchType]
+
+         cfg[k] = v
+      cfgjsn = json.dumps(cfg)
+      return cfgjsn
+
+   def asDict(self, asHex=True)->str:
+      usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
+      valueashex = ("canid","bitmask" )
+      cfg =dict()
+      for k in usekeys:
+         v = self.__dict__.get(k)
+         if k in valueashex:
+            v = hex(v)
+         if k == "verifyType":
+            v=verifyTypes[self.verifyType]
+         if k == "switchType":
+            v= switchTypes[self.switchType]
+
+         cfg[k] = v
+      return cfg
 
    def addFilterByData(data, objId=None):
       _ = filterconfig(data, objId)
@@ -121,6 +155,7 @@ class filterconfig:
             data = ld + f.getAsBytes() +rd
       return data
    
+
 class config:
    size = 40
    # configAsBytes = b"\0"*CONFIG_SIZE
@@ -205,4 +240,22 @@ class config:
       for f in me.filters:
          text += f.toString()
       return text 
+   
+   def asJson(me, asHex=True)->str:
+      usekeys = ("canspeed","rxid","txid","pinResetState","ack","noRetransmission","wakeup","extendedIds","filtersAreList")
+      valueashex = ("rxid","txid","pinResetState")
+      cfg =dict()
+      for k in usekeys:
+         v = me.__dict__.get(k)
+         if k in valueashex:
+            v = hex(v)
+         cfg[k] = v
+      filters = []
+      for f in me.filters:
+         filters.append(f.asDict(asHex=asHex))
+      cfg["filters"]=filters
+      cfgjsn = json.dumps(cfg)
+      return cfgjsn
+   
+
 #eof
