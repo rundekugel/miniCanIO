@@ -6,3 +6,6 @@
 /configapp/revision.py
 /revision.py
 */__pycache__/*
+/configapp/build/*
+/configapp/dist/*
+/configapp/canIoConfig.spec

@@ -97,6 +97,18 @@ def main():
 
   globs.config = config();
 
+  for p in sys.argv:
+     if "=" in p:
+        p0,p1=p.split("=",1)
+     else:
+        p0,p1 = p,None
+
+  if p0 =="-v" : globs.verbosity = int(p1)
+  if p0=="-rxid": globs.verbosity = int(p1, 0)
+  if p0=="-txid": globs.verbosity = int(p1, 0)
+  if p0=="-pin": cmd,param = "p", p1
+  
+
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
   globs.bus.filters = filters
   globs.notifier = can.Notifier(globs.bus, listeners=[can_rx_handler]) 
@@ -104,7 +116,7 @@ def main():
   # print(globs.bus.recv())
   readAllConfig()
   print(globs.config.toString())
-  
+  print("\rchange config?")
   doit = 1
   while doit:
     time.sleep(1)
