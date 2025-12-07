@@ -27,6 +27,7 @@ class cfgmsg:
    unlock = 0xc0
    readconfig = 0xcf
    editconfig = 0xce
+   writeconfigblock = 0xc2
    saveconfig = 0xc9
 
 class globs:
@@ -42,9 +43,16 @@ class globs:
   lastCanMsg = can.Message()
   config = None
   configfile=None
+  key = []
 
 
 def cansend(msg):
+   if isinstance(msg, (tuple,list)):
+      msg=bytes(msg)
+   elif isinstance(msg, int):
+      msg = bytes((msg,))
+   if len(msg)<8:
+      msg+=b"\0"*(8-len(msg))
    msg = can.Message(arbitration_id=globs.msgIdTx, data=msg, is_extended_id=globs.is_extended_id)
    globs.bus.send(msg)
 
@@ -65,7 +73,7 @@ def handle_cf(m: can.Message):
 
 def can_rx_handler(m: can.Message):
    print("_h:",m)
-   msgs={"Locklevel (0=unlocked)":[0xc0,handle_c0], "Config data":[0xcf,handle_cf]}
+   msgs={"Locklevel (0=unlocked)":[cfgmsg.unlock,handle_c0], "Config data":[cfgmsg.readconfig,handle_cf]}
    for msg in msgs:
       
       if m.dlc>0 and msgs[msg][0] == m.data[0]:
@@ -86,7 +94,41 @@ def readAllConfig():
    time.sleep(3)
    globs.config.decode(globs.rxconfig)
 
+def unlock(cfg:config):
+   for i in range(3):
+      cansend(bytes((cfgmsg.unlock, i))+ cfg.key[i:i+6])
 
+def writeAllConfig(cfg):
+   """write config to device"""
+   packsize = 5  # for editconfig =4; writeconfigblock =5
+   cfg.valid = 0xdeadbeef
+   data = cfg.asBytesWithFilters()
+   # unlock
+   unlock(globs.config)
+
+   # wirte packets
+   size = len(data)
+   pos = 0
+   block=0
+   while pos < size:
+      payload = data[pos:pos+packsize]
+      cansend(bytes([cfgmsg.writeconfigblock, block, len(payload)])+ payload )
+      block +=1
+      pos += packsize
+
+   # writeToFlash
+   cansend((cfgmsg.saveconfig))
+   return 
+
+
+def writeOneFilter(filter : filterconfig):
+   """write one filter to device"""
+   data = filter.asBytes()
+   id = filter.objId
+   # unlock
+   # wirte packets
+   
+   return 
 
 def main():
   print("CAN-IO-Configurator V"+__version__) 
@@ -111,15 +153,18 @@ def main():
   if p0=="-rxid": globs.verbosity = int(p1, 0)
   if p0=="-txid": globs.verbosity = int(p1, 0)
   if p0=="-pin": cmd,param = "p", p1
-  if p0== "-cfg?": cmd,param ="c?",p1
+  if p0== "-read": cmd,param ="down",p1
   if p0== "-cfg": globs.configfile = p1 
+  if p0== "-up": globs.cmd.append("up") 
+  if p0=="-key": globs.cmd.key = p1
+  
 
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
   globs.bus.filters = filters
   globs.notifier = can.Notifier(globs.bus, listeners=[can_rx_handler]) 
-  cansend([0xcf,0])
+  cansend([cfgmsg.readconfig,0])
   # print(globs.bus.recv())
-  if cmd=="c?":
+  if cmd=="down":
       readAllConfig()
       if globs.verbosity:
          print(globs.config.toString())
@@ -136,6 +181,9 @@ def main():
   #  
      if globs.verbosity:
          print(globs.config.asJson())
+  if 1: # "up" in cmd:
+     writeAllConfig(globs.config)
+
   doit = 1
   while doit:
     time.sleep(1)

@@ -104,6 +104,7 @@ class filterconfig:
    def getAsBytes(self)->bytes:
       if self.canid==None:
          return b""
+      if not self.ext: self.ext = 0
       msgid = self.canid | ([0,1<<31][self.ext>0])
       data = struct.pack(self.structstring, msgid, self.bytepos, self.bitmask, 
                          self.verifyType, self.verifyValue, self.switchType, self.pin)
@@ -172,10 +173,10 @@ class filterconfig:
 class config:
    size = 40
    # configAsBytes = b"\0"*CONFIG_SIZE
-   valid = None
-   key = []
+   valid = 0
+   key = b"\0"*16
    version = 0
-   canspeed_k = 0
+   canspeed_k = 500
    rxid = 0
    txid = 0
    pinResetState = 0xffffFFFF
@@ -230,6 +231,8 @@ class config:
       for k in jscfg:
          if k in usekeys:
             v = jscfg[k]
+            if k == "canspeed" and not v:
+               v=500 # set default value
             if k in valueashex:
                if isinstance(v, str):
                   self.__dict__[k] = int(v, 0)
