@@ -2,6 +2,14 @@
 
 """Read/write config of CAN-IO-Device
 details: https://github.com/rundekugel/miniCanIO
+
+-h    help
+-cfg=<config-file>
+-up   upload config to canIoDevice
+-key=<secretkey>  use this key for unlock the device
+-read[=configfile]    download config from miniCanIo device. optional write to config-file
+-v=<0..9>  set verbosity level. default = 1
+
 """
 
 import sys, os, time
@@ -139,7 +147,7 @@ def main():
     {"can_id": globs.msgIdRx, "can_mask": 0x7ff, "extended": False},
   ]
 
-  cmd, param = "", ""
+  param = "", ""
 
   globs.config = config();
 
@@ -153,17 +161,19 @@ def main():
   if p0 =="-v" : globs.verbosity = int(p1)
   if p0=="-rxid": globs.verbosity = int(p1, 0)
   if p0=="-txid": globs.verbosity = int(p1, 0)
-  if p0=="-pin": cmd.append("p") ;param =  p1
-  if p0== "-read": cmd.append("down"); param =p1
-  if p0== "-cfg": globs.configfile = p1 
+  if p0=="-pin": globs.cmd.append("p") ;param =  p1
+  if p0== "-read": globs.cmd.append("down"); param =p1
+  if p0== "-cfg": globs.configfile = p1 ; globs.cmd.append("cfg")
   if p0== "-up": globs.cmd.append("up") 
   if p0=="-key": globs.key = p1; globs.config.key = bytes()
-  
+  if p0 in ("-h","?","-?","-help","--help"):
+     print(__doc__)
+     return 0
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
   globs.bus.filters = filters
   globs.notifier = can.Notifier(globs.bus, listeners=[can_rx_handler]) 
  
-  if cmd=="down":
+  if "down" in  globs.cmd:
       readAllConfig()
       if globs.verbosity:
          print(globs.config.toString())
@@ -174,17 +184,24 @@ def main():
         with open(param, "w") as f:
          f.write(cfg)
 
-  if cmd=="-cfg":
+  if "cfg" in globs.cmd:
+     if globs.verbosity:
+        print("parse config file "+p1+"...")
      globs.config.parseFile(p1)
-  #  
+     if globs.verbosity:
+         print("done.")  
      if globs.verbosity:
          print(globs.config.asJson())
-  if "up" in cmd:
-     writeAllConfig(globs.config)
 
-  doit = 1
-  while doit:
-    time.sleep(1)
+  if "up" in globs.cmd:
+     if globs.verbosity:
+        print("upload config...")
+     writeAllConfig(globs.config)
+     if globs.verbosity:
+         print("done.")
+
+  time.sleep(1)
+
   globs.notifier.remove_listener(can_rx_handler)
   print("listener removed.")
   print(globs)
