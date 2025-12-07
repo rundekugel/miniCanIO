@@ -44,6 +44,7 @@ class globs:
   config = None
   configfile=None
   key = []
+  cmd =[]
 
 
 def cansend(msg):
@@ -152,18 +153,16 @@ def main():
   if p0 =="-v" : globs.verbosity = int(p1)
   if p0=="-rxid": globs.verbosity = int(p1, 0)
   if p0=="-txid": globs.verbosity = int(p1, 0)
-  if p0=="-pin": cmd,param = "p", p1
-  if p0== "-read": cmd,param ="down",p1
+  if p0=="-pin": cmd.append("p") ;param =  p1
+  if p0== "-read": cmd.append("down"); param =p1
   if p0== "-cfg": globs.configfile = p1 
   if p0== "-up": globs.cmd.append("up") 
-  if p0=="-key": globs.cmd.key = p1
+  if p0=="-key": globs.key = p1; globs.config.key = bytes()
   
-
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
   globs.bus.filters = filters
   globs.notifier = can.Notifier(globs.bus, listeners=[can_rx_handler]) 
-  cansend([cfgmsg.readconfig,0])
-  # print(globs.bus.recv())
+ 
   if cmd=="down":
       readAllConfig()
       if globs.verbosity:
@@ -175,13 +174,12 @@ def main():
         with open(param, "w") as f:
          f.write(cfg)
 
-  if 1: # cmd=="-cfg":
-     p1="a.cfg"
+  if cmd=="-cfg":
      globs.config.parseFile(p1)
   #  
      if globs.verbosity:
          print(globs.config.asJson())
-  if 1: # "up" in cmd:
+  if "up" in cmd:
      writeAllConfig(globs.config)
 
   doit = 1
