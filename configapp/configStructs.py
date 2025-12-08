@@ -22,12 +22,14 @@ __version__ = "0.0.1a"
 
 NUMBER_OF_MSG_FILTERS = 9
 CONFIG_SIZE = 36 + 22*NUMBER_OF_MSG_FILTERS 
+CONFIG_VALID_DEFAULT = 0x55aa0033
 
 verifyTypes = ["==","!=",">","<","AND","XOR"]
 switchTypes = ["ON","OFF","TOGGLE","BLINK","TIME","PWM","FREQ"]
 
-usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType","verifyValue","switchType","pin" )
-valueashex = ("canid","bitmask", "rxid", "txid" )
+usekeys = ("objId", "canid","ext","bytepos","bitmask","verifyType",
+      "verifyValue","switchType","pin" )
+valueashex = ("canid","bitmask", "rxid", "txid", "pin" )
                     
 class cfgmsg:
    unlock = 0xc0
@@ -39,9 +41,13 @@ class filterconfig:
    objId = None
    size = 10
    canid = None
+   bytepos=0
    bitmask = 0x0000
    ext = False
    pin = None
+   verifyValue = 0
+   verifyType = 0
+   switchType = 0
    structstring = sh.LITTLE_ENDIAN +sh.U32 +6*sh.U8
    count = 0
    _allFilters = []
@@ -308,7 +314,7 @@ class config:
       for f in me.filters:
          filters.append(f)
          cfg["filters"].append(f.asDict())
-      cfgjsn = json.dumps(cfg)
+      cfgjsn = json.dumps(cfg, indent=4)
       return cfgjsn
    
 

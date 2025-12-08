@@ -5,6 +5,7 @@ details: https://github.com/rundekugel/miniCanIO
 
 -h    help
 -cfg=<config-file>
+-can=<can-interface>  default: can0
 -up   upload config to canIoDevice
 -key=<secretkey>  use this key for unlock the device
 -read[=configfile]    download config from miniCanIo device. optional write to config-file
@@ -41,7 +42,7 @@ class cfgmsg:
 class globs:
   verbosity = 1
   interface = 'socketcan'
-  channel = 'vcan0'  
+  channel = 'can0'  
   bus : can.BusABC
   is_extended_id = False
   msgIdRx = 0xb9
@@ -55,7 +56,7 @@ class globs:
   cmd =[]
 
 
-def cansend(msg):
+def cansend(msg, waitafter=10e-3):
    if isinstance(msg, (tuple,list)):
       msg=bytes(msg)
    elif isinstance(msg, int):
@@ -64,9 +65,15 @@ def cansend(msg):
       msg+=b"\0"*(8-len(msg))
    msg = can.Message(arbitration_id=globs.msgIdTx, data=msg, is_extended_id=globs.is_extended_id)
    globs.bus.send(msg)
+   time.sleep(waitafter)
 
 def handle_c0(m: can.Message):
     globs.lockstatus = m.data[1]
+    return
+
+def handle_c2(m: can.Message):
+    if globs.verbosity:
+       print("rx:",hex(m.arbitration_id),ba.hexlify(m.data))
     return
 
 def handle_cf(m: can.Message):
@@ -82,9 +89,10 @@ def handle_cf(m: can.Message):
 
 def can_rx_handler(m: can.Message):
    print("_h:",m)
-   msgs={"Locklevel (0=unlocked)":[cfgmsg.unlock,handle_c0], "Config data":[cfgmsg.readconfig,handle_cf]}
+   msgs={"Locklevel (0=unlocked)":[cfgmsg.unlock,handle_c0], 
+         "block data":[cfgmsg.writeconfigblock ,handle_c2],
+         "Config data":[cfgmsg.readconfig,handle_cf]}
    for msg in msgs:
-      
       if m.dlc>0 and msgs[msg][0] == m.data[0]:
          print("rx: "+msg+": "+ba.hexlify(m.data[1:], " ").decode())
          msgs[msg][1](m)  # call handler
@@ -104,13 +112,18 @@ def readAllConfig():
    globs.config.decode(globs.rxconfig)
 
 def unlock(cfg:config):
+   cansend(bytes((cfgmsg.unlock,))+ b"reset")
    for i in range(3):
-      cansend(bytes((cfgmsg.unlock, i))+ cfg.key[i:i+6])
+      if globs.lockstatus == 0:
+         return
+      cansend(bytes((cfgmsg.unlock,))+ cfg.key[i:i+6])
+      time.sleep(0.02)
+
 
 def writeAllConfig(cfg):
    """write config to device"""
    packsize = 5  # for editconfig =4; writeconfigblock =5
-   cfg.valid = 0xdeadbeef
+   cfg.valid = CONFIG_VALID_DEFAULT
    data = cfg.asBytesWithFilters()
    # unlock
    unlock(globs.config)
@@ -121,9 +134,10 @@ def writeAllConfig(cfg):
    block=0
    while pos < size:
       payload = data[pos:pos+packsize]
-      cansend(bytes([cfgmsg.writeconfigblock, block, len(payload)])+ payload )
+      cansend(bytes([cfgmsg.writeconfigblock, block])+ payload )
       block +=1
       pos += packsize
+      time.sleep(0.02)
 
    # writeToFlash
    cansend((cfgmsg.saveconfig))
@@ -153,22 +167,23 @@ def main():
 
 
   for p in sys.argv:
-     if "=" in p:
-        p0,p1=p.split("=",1)
-     else:
-        p0,p1 = p,None
+      if "=" in p:
+         p0,p1=p.split("=",1)
+      else:
+         p0,p1 = p,None
 
-  if p0 =="-v" : globs.verbosity = int(p1)
-  if p0=="-rxid": globs.verbosity = int(p1, 0)
-  if p0=="-txid": globs.verbosity = int(p1, 0)
-  if p0=="-pin": globs.cmd.append("p") ;param =  p1
-  if p0== "-read": globs.cmd.append("down"); param =p1
-  if p0== "-cfg": globs.configfile = p1 ; globs.cmd.append("cfg")
-  if p0== "-up": globs.cmd.append("up") 
-  if p0=="-key": globs.key = p1; globs.config.key = bytes()
-  if p0 in ("-h","?","-?","-help","--help"):
-     print(__doc__)
-     return 0
+      if p0 =="-v" : globs.verbosity = int(p1)
+      if p0=="-rxid": globs.verbosity = int(p1, 0)
+      if p0=="-txid": globs.verbosity = int(p1, 0)
+      if p0=="-pin": globs.cmd.append("p") ;param =  p1
+      if p0== "-read": globs.cmd.append("down"); param =p1
+      if p0== "-can": globs.channel =p1
+      if p0== "-cfg": globs.configfile = p1 ; globs.cmd.append("cfg")
+      if p0== "-up": globs.cmd.append("up") 
+      if p0=="-key": globs.key = p1; globs.config.key = bytes()
+      if p0 in ("-h","?","-?","-help","--help"):
+         print(__doc__)
+         return 0
   globs.bus = can.Bus(channel=globs.channel, interface=globs.interface)
   globs.bus.filters = filters
   globs.notifier = can.Notifier(globs.bus, listeners=[can_rx_handler]) 

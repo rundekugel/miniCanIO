@@ -22,6 +22,7 @@ __version__ = "0.0.1a"
 
 NUMBER_OF_MSG_FILTERS = 9
 CONFIG_SIZE = 36 + 22*NUMBER_OF_MSG_FILTERS 
+# CONFIG_VALID_DEFAULT = 0x55aa0033
 
 class cfgmsg:
    unlock = 0xc0
@@ -50,7 +51,7 @@ def fillcfg():
    c = configStructs.config()
    c.ack = 1
    c.ack=1
-   c.valid = 0xdeadbeef
+   c.valid = configStructs.CONFIG_VALID_DEFAULT
    c.key = b"c"*16
    c.version = 1
    c.canspeed_k = 500 

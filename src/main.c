@@ -123,10 +123,10 @@ int main(void)
       Serialprintln("Starting with sFilterConfig");	
       setFilters(config);
 
-      //filter 2 for control msg
+      //filter 0x0d for control msg
       sFilterConfig.FilterIdHigh = (config->configMsgIdRx)<<5;
       sFilterConfig.FilterMaskIdHigh = 0xffff;
-      sFilterConfig.FilterNumber = 2;
+      sFilterConfig.FilterNumber = 0x0d;
       sFilterConfig.FilterFIFOAssignment = CAN_FILTER_FIFO1;
       HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig);
       
@@ -226,9 +226,14 @@ int main(void)
               break;
             case 0xc4:  //read config values by id
               //not implemented, yet.
-              //need config id table here.
-              //config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
-              //TxMessage.Data[1] = 0xff;
+              {
+                //need config id table here.
+                //config_getUserData(RxMessage.Data[1] *6, &(TxMessage.Data[2]), 6);
+                int configId = RxMessage.Data[1];
+
+                TxMessage.Data[1] = configId;
+                //TxMessage.Data[1] = 0xff;
+              }
               break;
             case 0xce:  //edit config [pos, size, data]
               if(unlocked<3){
@@ -246,7 +251,7 @@ int main(void)
               }
               {
                 uint8_t size = 5;
-                config_editDirectMemory(RxMessage.Data[1], &(RxMessage.Data[2]), size);
+                config_editDirectMemory(RxMessage.Data[1]*5, &(RxMessage.Data[2]), size);
                 TxMessage.Data[1] = RxMessage.Data[1];
               }
               break;
@@ -489,10 +494,10 @@ void switchGPIO(int pinNumber, enum CFG_SWITCH_TYPE action){
   
   switch(action){
   case CONFIG_SWITCH_TYPE_ON:
-    gpio->BRR = 1<<pinNumber;
+    gpio->BSRR = 1<<pinNumber;
     break;
   case CONFIG_SWITCH_TYPE_OFF:
-    gpio->BSRR = 1<<pinNumber;
+    gpio->BRR = 1<<pinNumber;
     break;
   case CONFIG_SWITCH_TYPE_TOGGLE:
     gpio->ODR ^= 1<<pinNumber;
@@ -506,27 +511,27 @@ void switchOnMsg(CanRxMsgTypeDef* rxmsg, Pcanconfig config){
   Pcancfgmsg cfgmsg = config->msgCfg;
 
   for(int n =0; n<CONFIG_MAX_MSG_ENTRIES; n++){
-    if(cfgmsg->msg_id == rxmsg->StdId){ //search all
-      uint8_t val = rxmsg->Data[cfgmsg->bytePos] & cfgmsg->bitMask;
-      uint8_t soll = cfgmsg->verifyValue;
-      switch(cfgmsg->verifyType){
+    if(cfgmsg[n].msg_id == rxmsg->StdId){ //search all
+      uint8_t val = rxmsg->Data[cfgmsg[n].bytePos] & cfgmsg[n].bitMask;
+      uint8_t soll = cfgmsg[n].verifyValue;
+      switch(cfgmsg[n].verifyType){
         case CONFIG_VERIFY_TYPE_EQUAL:
-          if(val == soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          if(val == soll) switchGPIO(cfgmsg[n].outputPin, cfgmsg[n].switchType); 
           break;
         case CONFIG_VERIFY_TYPE_NOT_EQUAL:
-          if(val != soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          if(val != soll) switchGPIO(cfgmsg[n].outputPin, cfgmsg[n].switchType); 
           break;
         case CONFIG_VERIFY_TYPE_GREATER:
-          if(val > soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          if(val > soll) switchGPIO(cfgmsg[n].outputPin, cfgmsg[n].switchType); 
           break;
         case CONFIG_VERIFY_TYPE_SMALLER:
-          if(val < soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          if(val < soll) switchGPIO(cfgmsg[n].outputPin, cfgmsg[n].switchType); 
           break;
         case CONFIG_VERIFY_TYPE_AND:
-          if(val & soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          if(val & soll) switchGPIO(cfgmsg[n].outputPin, cfgmsg[n].switchType); 
           break;
         case CONFIG_VERIFY_TYPE_XOR:  //does this make sense?
-          if(val ^ soll) switchGPIO(cfgmsg->outputPin, cfgmsg->switchType); 
+          if(val ^ soll) switchGPIO(cfgmsg[n].outputPin, cfgmsg[n].switchType); 
           break;
       }
     }

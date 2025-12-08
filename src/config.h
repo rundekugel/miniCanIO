@@ -38,9 +38,9 @@ typedef enum CFG_SWITCH_TYPE{
 }eCFG_SWITCH_TYPE;
 
 
-typedef struct _Scancfgmsg{
+typedef struct __attribute__((__packed__))  _Scancfgmsg {
   uint32_t msg_id:29;
-  uint32_t reserved:1;
+  uint32_t reserved:2;
   uint32_t msg_id_is_ext:1;
   uint8_t bytePos;
   uint8_t bitMask;
